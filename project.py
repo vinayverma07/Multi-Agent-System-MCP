@@ -153,21 +153,47 @@ def hotel_agent(state: TravelState):
         tavily_mcp_search(query)
     )
 
-    formatted_hotels = ""
-
+    # Build a concise hotel recommendation prompt using search results
+    hotel_search_text = ""
     if hotel_results:
-        data = json.loads(hotel_results[0]["text"])
+        if isinstance(hotel_results, list):
+            for item in hotel_results:
+                if isinstance(item, dict):
+                    hotel_search_text += str(item.get("text", "")) + "\n"
+                else:
+                    hotel_search_text += str(item) + "\n"
+        elif isinstance(hotel_results, dict):
+            hotel_search_text = str(hotel_results.get("text", ""))
+        else:
+            hotel_search_text = str(hotel_results)
 
-        for i, result in enumerate(data.get("results", []), start=1):
-            formatted_hotels += (
-                f"{i}. {result['title']}\n"
-                f"   {result['content']}\n\n"
-            )
+    prompt = f"""
+You are a travel hotel recommendation expert.
+The user wants hotel recommendations for: {state['user_query']}.
+Use the search results below to return a short, numbered recommendation list.
+Return 4 or 5 concise points in this exact format:
+Point 1
+Hotel: <hotel name or area>
+Details: <one short sentence>
+
+Search results:
+{hotel_search_text}
+"""
+
+    response = llm.invoke([
+        SystemMessage(content="You are an expert travel hotel recommender."),
+        HumanMessage(content=prompt)
+    ])
+
+    hotel_data = response.content.strip()
+
+    if not hotel_data:
+        hotel_data = "No hotel information available."
 
     return {
-        "hotel_results": formatted_hotels.strip(),
+        "hotel_results": hotel_data,
         "messages": [
-            AIMessage(content="Hotel information fetched")
+            AIMessage(content="Hotel recommendations generated")
         ],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
@@ -285,6 +311,30 @@ def itinerary_agent(state: TravelState):
     }
 
 
+# Final Response Agent
+def final_agent(state: TravelState):
+
+    final_prompt = f"""
+    Generate final travel response.
+
+    Flights:
+    {state['flight_results']}
+
+    Hotels:
+    {state['hotel_results']}
+
+    Itinerary:
+    {state['itinerary']}
+    """
+
+    response = llm.invoke([
+        HumanMessage(content=final_prompt)
+    ])
+
+    return {
+        "messages": [response],
+        "llm_calls": state.get("llm_calls", 0) + 1
+    }
 
 
 
@@ -296,13 +346,15 @@ graph.add_node("flight_agent", flight_agent)
 graph.add_node("hotel_agent", hotel_agent)
 graph.add_node("weather_agent", weather_agent)
 graph.add_node("itinerary_agent", itinerary_agent)
+graph.add_node("final_agent", final_agent)
 
 
 graph.add_edge(START, "flight_agent")
 graph.add_edge("flight_agent", "hotel_agent")
 graph.add_edge("hotel_agent", "weather_agent")
 graph.add_edge("weather_agent", "itinerary_agent")
-graph.add_edge("itinerary_agent", END)
+graph.add_edge("itinerary_agent", "final_agent")
+graph.add_edge("final_agent", END)
 
 
 # Persistent connection so both CLI and Streamlit can share the compiled app

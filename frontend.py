@@ -540,25 +540,49 @@ def format_hotel_results(hotel_text):
     import html
     lines = hotel_text.strip().split('\n')
     html_output = ""
-    
-    for i, line in enumerate(lines, 1):
-        if line.strip():
-            stripped = line.strip()
-            # Check if line starts with a number (like "1. ")
-            if stripped and stripped[0].isdigit() and '. ' in stripped:
-                parts = stripped.split('. ', 1)
-                num = parts[0]
-                rest = html.escape(parts[1]) if len(parts) > 1 else ""
-                html_output += f'<div class="hotel-card"><span class="hotel-num">{num}</span><div class="hotel-title">{rest}</div>'
-            elif line.startswith('   '):
-                # This is content, add it to the current card
-                content = html.escape(line.strip())
-                html_output += f'<div class="hotel-content">{content}</div></div>'
+    cards = []
+    card = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        if stripped.startswith("Point "):
+            if card:
+                cards.append(card)
+            card = {"num": stripped.replace("Point ", ""), "title": "", "details": ""}
+        elif stripped.startswith("Hotel:") and card is not None:
+            card["title"] = html.escape(stripped.replace("Hotel:", "", 1).strip())
+        elif stripped.startswith("Details:") and card is not None:
+            card["details"] = html.escape(stripped.replace("Details:", "", 1).strip())
+        elif stripped and stripped[0].isdigit() and '. ' in stripped:
+            if card:
+                cards.append(card)
+            parts = stripped.split('. ', 1)
+            card = {"num": parts[0], "title": html.escape(parts[1]) if len(parts) > 1 else "", "details": ""}
+        elif card is not None:
+            if card["details"]:
+                card["details"] += " " + html.escape(stripped)
             else:
-                escaped_content = html.escape(stripped)
-                html_output += f'<div class="hotel-content">{escaped_content}</div></div>'
-    
-    return html_output if html_output else "<p style='color: #7aa8cc;'>_No hotel data returned._</p>"
+                card["details"] = html.escape(stripped)
+
+    if card:
+        cards.append(card)
+
+    if not cards:
+        return f"<div class='hotel-card'><div class='hotel-content'>{html.escape(hotel_text)}</div></div>"
+
+    for card in cards:
+        html_output += '<div class="hotel-card">'
+        html_output += f'<div class="hotel-num">{html.escape(card["num"])}</div>'
+        if card["title"]:
+            html_output += f'<div class="hotel-title">{card["title"]}</div>'
+        if card["details"]:
+            html_output += f'<div class="hotel-content">{card["details"]}</div>'
+        html_output += '</div>'
+
+    return html_output
 
 def format_flight_results(flight_text):
     """Format flight results into structured cards."""
