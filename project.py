@@ -21,11 +21,12 @@ from langchain_groq import ChatGroq
 
 #from mcp_client import tavily_mcp_search
 
+from tools.flight_tool import search_flights
 from mcp_client import (
     tavily_mcp_search,
-    get_airports,
-    get_airlines,
-    aviation_mcp_call,extract_destination,forecast_mcp_search,weather_mcp_search
+    extract_destination,
+    forecast_mcp_search,
+    weather_mcp_search
 )
 
 
@@ -80,50 +81,30 @@ Return concise travel guidance.
 
 # Flight Agent
 def flight_agent(state: TravelState):
-    print("\nINSIDE FLIGHT AGENT\n")
-
     query = state["user_query"]
 
     try:
-
-        airports = asyncio.run(
-            aviation_mcp_call(
-                "list_airports"
-            )
-        )
-
-        airlines = asyncio.run(
-            aviation_mcp_call(
-                "list_airlines"
-            )
-        )
+        flight_search_text = search_flights(query)
 
         prompt = FLIGHT_AGENT_PROMPT.format(
             query=query,
-            airport_data=str(airports)[:3000],
-            airline_data=str(airlines)[:3000]
+            airport_data=flight_search_text,
+            airline_data=""
         )
 
         response = llm.invoke([
-            SystemMessage(
-                content="You are an expert travel flight planner."
-            ),
+            SystemMessage(content="You are an expert travel flight planner."),
             HumanMessage(content=prompt)
         ])
 
         flight_data = response.content
 
     except Exception as e:
-
         flight_data = f"Flight information unavailable: {str(e)}"
 
     return {
         "flight_results": flight_data,
-        "messages": [
-            AIMessage(
-                content="Flight recommendations generated"
-            )
-        ],
+        "messages": [AIMessage(content="Flight recommendations generated")],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
@@ -198,6 +179,28 @@ Search results:
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
+
+def _parse_mcp_json_result(result):
+    if isinstance(result, list) and len(result) > 0:
+        result = result[0]
+
+    if isinstance(result, dict):
+        if 'text' in result and isinstance(result['text'], str):
+            try:
+                return json.loads(result['text'])
+            except json.JSONDecodeError:
+                return result
+        return result
+
+    if isinstance(result, str):
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return None
+
+    return None
+
+
 def weather_agent(state: TravelState):
 
     city = extract_destination(state["user_query"])
@@ -214,26 +217,10 @@ def weather_agent(state: TravelState):
     print(forecast_data)
 
     # Parse weather data - handle both dict and list formats
-    weather_dict = None
-    if isinstance(weather_data, list) and len(weather_data) > 0:
-        # Extract JSON from message format
-        if isinstance(weather_data[0], dict) and 'text' in weather_data[0]:
-            weather_dict = json.loads(weather_data[0]['text'])
-        else:
-            weather_dict = weather_data[0] if isinstance(weather_data[0], dict) else weather_data
-    elif isinstance(weather_data, dict):
-        weather_dict = weather_data
+    weather_dict = _parse_mcp_json_result(weather_data)
 
     # Parse forecast data - handle both dict and list formats
-    forecast_dict = None
-    if isinstance(forecast_data, list) and len(forecast_data) > 0:
-        # Extract JSON from message format
-        if isinstance(forecast_data[0], dict) and 'text' in forecast_data[0]:
-            forecast_dict = json.loads(forecast_data[0]['text'])
-        else:
-            forecast_dict = forecast_data[0] if isinstance(forecast_data[0], dict) else forecast_data
-    elif isinstance(forecast_data, dict):
-        forecast_dict = forecast_data
+    forecast_dict = _parse_mcp_json_result(forecast_data)
 
     # Format weather data for readability
     formatted_weather = ""
@@ -252,16 +239,19 @@ def weather_agent(state: TravelState):
     # Format forecast data for readability
     formatted_forecast = ""
     if forecast_dict:
-        forecast_list = forecast_dict.get('forecast', [])
-        if forecast_list:
-            formatted_forecast = "📅 5-Day Forecast:\n"
-            for i, item in enumerate(forecast_list, 1):
-                datetime_str = item.get('datetime', 'N/A')
-                temp = item.get('temperature', 'N/A')
-                weather = item.get('weather', 'N/A').title()
-                formatted_forecast += f"\n   {i}. {datetime_str}\n      🌡️ {temp}°C | ☁️ {weather}"
+        if isinstance(forecast_dict, dict):
+            forecast_list = forecast_dict.get('forecast', [])
+            if forecast_list:
+                formatted_forecast = "📅 5-Day Forecast:\n"
+                for i, item in enumerate(forecast_list, 1):
+                    datetime_str = item.get('datetime', 'N/A')
+                    temp = item.get('temperature', 'N/A')
+                    weather = item.get('weather', 'N/A').title()
+                    formatted_forecast += f"\n   {i}. {datetime_str}\n      🌡️ {temp}°C | ☁️ {weather}"
+            else:
+                formatted_forecast = "No forecast data available"
         else:
-            formatted_forecast = "No forecast data available"
+            formatted_forecast = str(forecast_dict)
     else:
         formatted_forecast = "Forecast data unavailable"
 

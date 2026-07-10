@@ -7,8 +7,6 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 #load_dotenv()
 load_dotenv(override=True)
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-AVIATIONSTACK_API_KEY = os.getenv("AVIATIONSTACK_API_KEY")
-
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 client = MultiServerMCPClient(
@@ -17,21 +15,6 @@ client = MultiServerMCPClient(
             "transport": "streamable_http",
             "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
         },
-
-        "aviationstack": {
-            "transport": "stdio",
-            "command": r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\aviationstack-mcp\.venv\Scripts\python.exe",
-            "args": [
-                "-m",
-                "aviationstack_mcp",
-                "mcp",
-                "run"
-            ],
-            "env": {
-                "AVIATION_STACK_API_KEY": AVIATIONSTACK_API_KEY
-            }
-        },
-
         "weather": {
             "transport": "stdio",
             "command": r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\.venv\Scripts\python.exe",
@@ -42,22 +25,15 @@ client = MultiServerMCPClient(
                 "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY
             }
         }
-
-
-
     }
-
 )
 
 search_tool = None
-aviation_tools = {}
 
 async def initialize_mcp():
-
     global search_tool
-    global aviation_tools
 
-    if search_tool is not None and aviation_tools:
+    if search_tool is not None:
         return
 
     tools = await client.get_tools()
@@ -73,14 +49,6 @@ async def initialize_mcp():
         if tool.name == "tavily_search"
     )
 
-    aviation_tools = {
-        tool.name: tool
-        for tool in tools
-        if tool.name != "tavily_search"
-    }
-
-
-
 async def tavily_mcp_search(query: str):
     await initialize_mcp()
     result = await search_tool.ainvoke(
@@ -88,56 +56,6 @@ async def tavily_mcp_search(query: str):
             "query": query
         }
     )
-    return result
-
-
-
-
-async def aviation_mcp_call(
-    tool_name: str,
-    tool_args: dict = None
-):
-
-    tools = await client.get_tools()
-
-    tool = next(
-        t for t in tools
-        if t.name == tool_name
-    )
-
-    result = await tool.ainvoke(
-        tool_args or {}
-    )
-
-    return result
-
-
-
-async def get_airports():
-
-    await initialize_mcp()
-
-    tool = aviation_tools.get("list_airports")
-
-    if not tool:
-        return "Airport tool unavailable"
-
-    result = await tool.ainvoke({})
-
-    return result
-
-
-async def get_airlines():
-
-    await initialize_mcp()
-
-    tool = aviation_tools.get("list_airlines")
-
-    if not tool:
-        return "Airline tool unavailable"
-
-    result = await tool.ainvoke({})
-
     return result
 
 
