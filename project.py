@@ -14,6 +14,7 @@ from langchain_core.messages import (
     AIMessage,
     SystemMessage,
 )
+from auth import init_db
 
 from langchain_groq import ChatGroq
 
@@ -37,6 +38,8 @@ from dotenv import load_dotenv
 #load_dotenv()
 load_dotenv(override=True)
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+init_db()
 
 # LLM
 llm = ChatGroq(
@@ -348,7 +351,7 @@ graph.add_edge("final_agent", END)
 
 
 # Persistent connection so both CLI and Streamlit can share the compiled app
-_conn = psycopg.connect(DATABASE_URL)
+_conn = psycopg.connect(DATABASE_URL, autocommit=True)
 checkpointer = PostgresSaver(_conn)
 checkpointer.setup()
 
