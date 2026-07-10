@@ -400,10 +400,247 @@ div[data-testid="stDownloadButton"] > button {
     border: 1px solid #2a5080 !important;
     border-radius: 10px !important;
 }
+
+/* ── Hotel Card Styles ── */
+.hotel-card {
+    background: linear-gradient(135deg, #0e1a2e 0%, #0a1520 100%);
+    border: 1px solid #1e3050;
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 0.8rem;
+    transition: all 0.3s ease;
+}
+.hotel-card:hover {
+    border-color: #3a7bd5;
+    box-shadow: 0 4px 12px rgba(58, 123, 213, 0.15);
+}
+.hotel-num {
+    display: inline-block;
+    background: rgba(58, 123, 213, 0.25);
+    color: #7ab8f5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-right: 0.5rem;
+}
+.hotel-title {
+    color: #e8f4ff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.hotel-content {
+    color: #a4c5f8;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* ── Flight Card Styles ── */
+.flight-card {
+    background: linear-gradient(135deg, #0e1a2e 0%, #0a1520 100%);
+    border: 1px solid #1e3050;
+    border-left: 4px solid #2978d4;
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 0.8rem;
+}
+.flight-label {
+    color: #7ab8f5;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+}
+.flight-value {
+    color: #e8f4ff;
+    font-size: 1rem;
+}
+
+/* ── Weather Card Styles ── */
+.weather-section {
+    background: linear-gradient(135deg, #0e1a2e 0%, #0a1520 100%);
+    border: 1px solid #1e3050;
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+}
+.weather-title {
+    color: #7ab8f5;
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #1e3050;
+}
+.weather-content {
+    color: #a4c5f8;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+/* ── Itinerary Styles ── */
+.itinerary-container {
+    background: linear-gradient(135deg, #0e1a2e 0%, #0a1520 100%);
+    border: 1px solid #1e3050;
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+.itinerary-content {
+    color: #a4c5f8;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+.itinerary-content h1, .itinerary-content h2, .itinerary-content h3 {
+    color: #e8f4ff;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+.itinerary-content li, .itinerary-content ul {
+    margin-left: 1.2rem;
+    margin-bottom: 0.3rem;
+}
+
+/* ── Final Response Styles ── */
+.final-response {
+    background: linear-gradient(160deg, #0c1a2e 0%, #0a1520 100%);
+    border: 1px solid #1e3a5c;
+    border-left: 4px solid #3a7bd5;
+    border-radius: 14px;
+    padding: 1.8rem;
+    line-height: 1.8;
+    color: #cce0f5;
+    font-size: 0.95rem;
+}
+.final-response h1, .final-response h2, .final-response h3 {
+    color: #e8f4ff;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+}
+.final-response ul, .final-response ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+.final-response li {
+    margin-bottom: 0.4rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
 init_db()
+
+def format_hotel_results(hotel_text):
+    """Format hotel results into nice cards."""
+    if not hotel_text or not hotel_text.strip():
+        return "<p style='color: #7aa8cc;'>_No hotel data returned._</p>"
+    
+    import html
+    lines = hotel_text.strip().split('\n')
+    html_output = ""
+    
+    for i, line in enumerate(lines, 1):
+        if line.strip():
+            stripped = line.strip()
+            # Check if line starts with a number (like "1. ")
+            if stripped and stripped[0].isdigit() and '. ' in stripped:
+                parts = stripped.split('. ', 1)
+                num = parts[0]
+                rest = html.escape(parts[1]) if len(parts) > 1 else ""
+                html_output += f'<div class="hotel-card"><span class="hotel-num">{num}</span><div class="hotel-title">{rest}</div>'
+            elif line.startswith('   '):
+                # This is content, add it to the current card
+                content = html.escape(line.strip())
+                html_output += f'<div class="hotel-content">{content}</div></div>'
+            else:
+                escaped_content = html.escape(stripped)
+                html_output += f'<div class="hotel-content">{escaped_content}</div></div>'
+    
+    return html_output if html_output else "<p style='color: #7aa8cc;'>_No hotel data returned._</p>"
+
+def format_flight_results(flight_text):
+    """Format flight results into structured cards."""
+    if not flight_text or not flight_text.strip():
+        return "<p style='color: #7aa8cc;'>_No flight data returned._</p>"
+    
+    import html
+    lines = flight_text.strip().split('\n')
+    html_output = '<div style="display: flex; flex-direction: column; gap: 0.8rem;">'
+    
+    for line in lines:
+        if line.strip():
+            stripped = line.strip()
+            # Check if line has a number followed by dot and space
+            if stripped and stripped[0].isdigit() and '. ' in stripped:
+                parts = stripped.split('. ', 1)
+                num = parts[0]
+                content = html.escape(parts[1]) if len(parts) > 1 else ""
+                html_output += f'<div class="flight-card"><div class="flight-label">Point {num}</div><div class="flight-value">{content}</div></div>'
+            elif stripped and not stripped[0].isdigit():
+                # Regular content line
+                escaped_line = html.escape(stripped)
+                html_output += f'<div style="color: #a4c5f8; font-size: 0.9rem; margin: 0.5rem 0;">{escaped_line}</div>'
+    
+    html_output += '</div>'
+    return html_output if html_output else "<p style='color: #7aa8cc;'>_No flight data returned._</p>"
+
+def format_weather_results(weather_text):
+    """Format weather results into sections."""
+    if not weather_text or not weather_text.strip():
+        return "<p style='color: #7aa8cc;'>_No weather data returned._</p>"
+    
+    import html
+    html_output = ""
+    sections = weather_text.strip().split('\n\n')
+    
+    for section in sections:
+        if section.strip():
+            lines = section.strip().split('\n')
+            # First line might be a header
+            if lines:
+                first_line = lines[0].strip()
+                if ':' in first_line:
+                    title, _ = first_line.split(':', 1)
+                    escaped_title = html.escape(title.strip())
+                    html_output += f'<div class="weather-section"><div class="weather-title">{escaped_title}</div>'
+                    remaining_content = '\n'.join(lines)
+                    if ':' in remaining_content:
+                        content = remaining_content.split(':', 1)[1].strip()
+                    else:
+                        content = remaining_content
+                    escaped_content = html.escape(content)
+                    html_output += f'<div class="weather-content">{escaped_content.replace(chr(10), "<br>")}</div></div>'
+                else:
+                    escaped_section = html.escape(section)
+                    html_output += f'<div class="weather-section"><div class="weather-content">{escaped_section.replace(chr(10), "<br>")}</div></div>'
+    
+    return html_output if html_output else "<p style='color: #7aa8cc;'>_No weather data returned._</p>"
+
+def format_itinerary_results(itinerary_text):
+    """Format itinerary results with styling."""
+    if not itinerary_text or not itinerary_text.strip():
+        return "<div class='itinerary-container'><p style='color: #7aa8cc;'>_No itinerary generated._</p></div>"
+    
+    # Escape HTML and replace line breaks
+    import html
+    escaped_text = html.escape(itinerary_text)
+    formatted_text = escaped_text.replace('\n', '<br>')
+    
+    return f'<div class="itinerary-container"><div class="itinerary-content">{formatted_text}</div></div>'
+
+def format_final_response(response_text):
+    """Format final response with styling."""
+    if not response_text or not response_text.strip():
+        return "<p style='color: #7aa8cc;'>_No final response._</p>"
+    
+    # Escape HTML and replace line breaks
+    import html
+    escaped_text = html.escape(response_text)
+    formatted_text = escaped_text.replace('\n', '<br>')
+    
+    return f'<div class="final-response">{formatted_text}</div>'
 
 if "user_query" not in st.session_state:
     st.session_state.user_query = ""
@@ -557,7 +794,7 @@ with st.sidebar:
         st.markdown(f"<div class='sidebar-chip'>{tech}</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='sidebar-title'>Agent Pipeline</div>", unsafe_allow_html=True)
-    for step in ["① Flight Agent", "② Hotel Agent", "③ Itinerary Agent", "④ Final Agent"]:
+    for step in ["① Flight Agent", "② Hotel Agent", "③ Weather Agent", "④ Itinerary Agent", "⑤ Final Agent"]:
         st.markdown(f"<div class='sidebar-chip'>{step}</div>", unsafe_allow_html=True)
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
@@ -625,6 +862,7 @@ with reset_col:
 AGENT_META = {
     "flight_agent":    ("✈️", "Flight Agent"),
     "hotel_agent":     ("🏨", "Hotel Agent"),
+    "weather_agent":   ("🌤️", "Weather Agent"),
     "itinerary_agent": ("🗓️", "Itinerary Agent"),
     "final_agent":     ("🧠", "Final Agent"),
 }
@@ -634,7 +872,7 @@ if generate:
         st.warning("Please describe your trip first.")
     else:
         config = {"configurable": {"thread_id": thread_id}}
-        collected = {"flight_results": "", "hotel_results": "",
+        collected = {"flight_results": "", "hotel_results": "", "weather_results": "",
                      "itinerary": "", "final_response": "", "llm_calls": 0}
 
         st.markdown("---")
@@ -661,30 +899,40 @@ if generate:
                         if node_name == "flight_agent":
                             text = state_update.get("flight_results", "")
                             collected["flight_results"] = text
-                            st.markdown(text or "_No flight data returned._")
+                            flight_html = format_flight_results(text)
+                            st.markdown(flight_html, unsafe_allow_html=True)
 
                         elif node_name == "hotel_agent":
                             text = state_update.get("hotel_results", "")
                             collected["hotel_results"] = text
-                            st.markdown(text or "_No hotel data returned._")
+                            hotel_html = format_hotel_results(text)
+                            st.markdown(hotel_html, unsafe_allow_html=True)
+
+                        elif node_name == "weather_agent":
+                            text = state_update.get("weather_results", "")
+                            collected["weather_results"] = text
+                            weather_html = format_weather_results(text)
+                            st.markdown(weather_html, unsafe_allow_html=True)
 
                         elif node_name == "itinerary_agent":
                             text = state_update.get("itinerary", "")
                             collected["itinerary"] = text
-                            st.markdown(text or "_No itinerary generated._")
+                            itinerary_html = format_itinerary_results(text)
+                            st.markdown(itinerary_html, unsafe_allow_html=True)
 
                         elif node_name == "final_agent":
                             msgs = state_update.get("messages", [])
                             text = msgs[-1].content if msgs else ""
                             collected["final_response"] = text
-                            st.markdown(text or "_No final response._")
+                            final_html = format_final_response(text)
+                            st.markdown(final_html, unsafe_allow_html=True)
 
                         collected["llm_calls"] = state_update.get("llm_calls", collected["llm_calls"])
 
         # Metrics
         st.markdown(f"""
         <div class="metric-row">
-            <div class="metric-box"><div class="metric-val">4</div><div class="metric-lbl">Agents Run</div></div>
+            <div class="metric-box"><div class="metric-val">5</div><div class="metric-lbl">Agents Run</div></div>
             <div class="metric-box"><div class="metric-val">{collected['llm_calls']}</div><div class="metric-lbl">LLM Calls</div></div>
             <div class="metric-box"><div class="metric-val">✅</div><div class="metric-lbl">Status</div></div>
         </div>
@@ -694,8 +942,8 @@ if generate:
         if collected["final_response"]:
             st.markdown("<div class='sec-head'><span>🧠 Final Travel Plan</span></div>",
                         unsafe_allow_html=True)
-            st.markdown(f"<div class='final-card'>{collected['final_response']}</div>",
-                        unsafe_allow_html=True)
+            final_html = format_final_response(collected['final_response'])
+            st.markdown(final_html, unsafe_allow_html=True)
 
         # Save
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -717,6 +965,10 @@ if generate:
 
 ## 🏨 Hotel Information
 {collected['hotel_results'] or 'N/A'}
+
+---
+## 🏨 weather Information
+{collected['weather_results'] or 'N/A'}
 
 ---
 

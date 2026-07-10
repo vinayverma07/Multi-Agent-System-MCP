@@ -206,14 +206,21 @@ llm = ChatGroq(
 def extract_destination(query: str):
 
     prompt = f"""
-    Extract only the destination city or country.
+        Extract the destination city from the user's travel query.
 
-    Query:
-    {query}
+        Rules:
+        - Return ONLY the city name.
+        - No explanation.
+        - No punctuation.
+        - No markdown.
+        - No extra words.
+        - If country only is mentioned, return the capital city.
 
-    Return only destination name.
-    """
+        Query:
+        {query}
+        """
 
     response = llm.invoke(prompt)
+    city = response.content.strip().replace(".", "").replace('"', "")
 
-    return response.content.strip()
+    return city

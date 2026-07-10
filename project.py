@@ -1,6 +1,7 @@
 
 # LangGraph Multi-Agent Travel Booking System with Long-Term Memory
 import os
+import json
 from typing import TypedDict, Annotated
 import operator
 import asyncio
@@ -129,43 +130,120 @@ def flight_agent(state: TravelState):
 
 
 
-# Hotel Agent
+# # Hotel Agent
+# def hotel_agent(state: TravelState):
+#     query = f"Best hotels for {state['user_query']}" 
+
+#     hotel_results = asyncio.run(
+#         tavily_mcp_search(query)
+#     )
+
+#     return {
+#         "hotel_results": hotel_results,
+#         "messages": [
+#             AIMessage(content="Hotel information fetched")
+#         ],
+#         "llm_calls": state.get("llm_calls", 0) + 1
+#     }
+
 def hotel_agent(state: TravelState):
-    query = f"Best hotels for {state['user_query']}" 
+    query = f"Best hotels for {state['user_query']}"
 
     hotel_results = asyncio.run(
         tavily_mcp_search(query)
     )
 
+    formatted_hotels = ""
+
+    if hotel_results:
+        data = json.loads(hotel_results[0]["text"])
+
+        for i, result in enumerate(data.get("results", []), start=1):
+            formatted_hotels += (
+                f"{i}. {result['title']}\n"
+                f"   {result['content']}\n\n"
+            )
+
     return {
-        "hotel_results": hotel_results,
+        "hotel_results": formatted_hotels.strip(),
         "messages": [
             AIMessage(content="Hotel information fetched")
         ],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
-
 def weather_agent(state: TravelState):
 
     city = extract_destination(state["user_query"])
+    print(city)
 
     weather_data = asyncio.run(
         weather_mcp_search(city)
     )
+    print(weather_data)
 
     forecast_data = asyncio.run(
         forecast_mcp_search(city)
     )
+    print(forecast_data)
+
+    # Parse weather data - handle both dict and list formats
+    weather_dict = None
+    if isinstance(weather_data, list) and len(weather_data) > 0:
+        # Extract JSON from message format
+        if isinstance(weather_data[0], dict) and 'text' in weather_data[0]:
+            weather_dict = json.loads(weather_data[0]['text'])
+        else:
+            weather_dict = weather_data[0] if isinstance(weather_data[0], dict) else weather_data
+    elif isinstance(weather_data, dict):
+        weather_dict = weather_data
+
+    # Parse forecast data - handle both dict and list formats
+    forecast_dict = None
+    if isinstance(forecast_data, list) and len(forecast_data) > 0:
+        # Extract JSON from message format
+        if isinstance(forecast_data[0], dict) and 'text' in forecast_data[0]:
+            forecast_dict = json.loads(forecast_data[0]['text'])
+        else:
+            forecast_dict = forecast_data[0] if isinstance(forecast_data[0], dict) else forecast_data
+    elif isinstance(forecast_data, dict):
+        forecast_dict = forecast_data
+
+    # Format weather data for readability
+    formatted_weather = ""
+    if weather_dict:
+        formatted_weather = f"""
+📍 Location: {weather_dict.get('city', 'N/A')}
+🌡️ Temperature: {weather_dict.get('temperature_c', 'N/A')}°C
+🤔 Feels Like: {weather_dict.get('feels_like_c', 'N/A')}°C
+💧 Humidity: {weather_dict.get('humidity', 'N/A')}%
+☁️ Condition: {weather_dict.get('condition', 'N/A').title()}
+💨 Wind Speed: {weather_dict.get('wind_speed', 'N/A')} m/s
+"""
+    else:
+        formatted_weather = "Weather data unavailable"
+
+    # Format forecast data for readability
+    formatted_forecast = ""
+    if forecast_dict:
+        forecast_list = forecast_dict.get('forecast', [])
+        if forecast_list:
+            formatted_forecast = "📅 5-Day Forecast:\n"
+            for i, item in enumerate(forecast_list, 1):
+                datetime_str = item.get('datetime', 'N/A')
+                temp = item.get('temperature', 'N/A')
+                weather = item.get('weather', 'N/A').title()
+                formatted_forecast += f"\n   {i}. {datetime_str}\n      🌡️ {temp}°C | ☁️ {weather}"
+        else:
+            formatted_forecast = "No forecast data available"
+    else:
+        formatted_forecast = "Forecast data unavailable"
 
     return {
-        "weather_results": f"""
-        Current Weather:
-        {weather_data}
-
-        Forecast:
-        {forecast_data}
-        """,
+        "weather_results": f"""🌤️ Current Weather in {city}:
+{formatted_weather}
+{formatted_forecast}
+""",
         "messages": [
             AIMessage(
                 content="Weather information fetched"
