@@ -29,8 +29,7 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 #     }
 # )
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-TAVILY_SERVER_SCRIPT = os.path.join(CURRENT_DIR, "custom_tavily_mcp_server.py")
+
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 WEATHER_SERVER_SCRIPT = os.path.join(CURRENT_DIR, "custom_weather_mcp_server.py")
@@ -40,12 +39,8 @@ WEATHER_SERVER_SCRIPT = os.path.join(CURRENT_DIR, "custom_weather_mcp_server.py"
 client = MultiServerMCPClient(
     {
         "tavily": {
-            "transport": "stdio",
-            "command": sys.executable,
-            "args": [TAVILY_SERVER_SCRIPT],
-            "env": {
-                "TAVILY_API_KEY": TAVILY_API_KEY or ""
-            }
+            "transport": "streamable_http",
+            "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
         },
         "weather": {
             "transport": "stdio",
