@@ -1,5 +1,6 @@
 import os
 import asyncio
+import sys
 
 from dotenv import load_dotenv
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -9,24 +10,54 @@ load_dotenv(override=True)
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
+# client = MultiServerMCPClient(
+#     {
+#         "tavily": {
+#             "transport": "streamable_http",
+#             "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
+#         },
+#         "weather": {
+#             "transport": "stdio",
+#             "command": r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\.venv\Scripts\python.exe",
+#             "args": [
+#                 r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\custom_weather_mcp_server.py"
+#             ],
+#             "env": {
+#                 "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY
+#             }
+#         }
+#     }
+# )
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TAVILY_SERVER_SCRIPT = os.path.join(CURRENT_DIR, "custom_tavily_mcp_server.py")
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+WEATHER_SERVER_SCRIPT = os.path.join(CURRENT_DIR, "custom_weather_mcp_server.py")
+
+# Ensure this matches the file name where you pasted your FastMCP code!
+
 client = MultiServerMCPClient(
     {
         "tavily": {
-            "transport": "streamable_http",
-            "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
+            "transport": "stdio",
+            "command": sys.executable,
+            "args": [TAVILY_SERVER_SCRIPT],
+            "env": {
+                "TAVILY_API_KEY": TAVILY_API_KEY or ""
+            }
         },
         "weather": {
             "transport": "stdio",
-            "command": r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\.venv\Scripts\python.exe",
-            "args": [
-                r"C:\Users\Vinay Verma\Desktop\code\Multi-Agent-System-MCP\custom_weather_mcp_server.py"
-            ],
+            "command": sys.executable,
+            "args": [WEATHER_SERVER_SCRIPT],
             "env": {
-                "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY
+                "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY or ""
             }
         }
     }
 )
+
 
 search_tool = None
 
