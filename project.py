@@ -316,6 +316,9 @@ def final_agent(state: TravelState):
     Hotels:
     {state['hotel_results']}
 
+    Weather Information:
+    {state['weather_results']}
+
     Itinerary:
     {state['itinerary']}
     """

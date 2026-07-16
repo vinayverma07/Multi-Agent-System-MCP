@@ -2,3 +2,4 @@
 __pycache__/
 .env
 travel_plans/
+frontend2.py

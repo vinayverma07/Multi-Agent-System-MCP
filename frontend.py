@@ -919,39 +919,31 @@ if generate:
                 for node_name, state_update in chunk.items():
                     icon, label = AGENT_META.get(node_name, ("🔧", node_name))
 
-                    with st.status(f"{icon}  {label}", state="complete", expanded=True):
-                        if node_name == "flight_agent":
-                            text = state_update.get("flight_results", "")
-                            collected["flight_results"] = text
-                            flight_html = format_flight_results(text)
-                            st.markdown(flight_html, unsafe_allow_html=True)
+                    with st.status(f"{icon}  {label}", state="running", expanded=False):
+                        st.caption("Working on the next step...")
 
-                        elif node_name == "hotel_agent":
-                            text = state_update.get("hotel_results", "")
-                            collected["hotel_results"] = text
-                            hotel_html = format_hotel_results(text)
-                            st.markdown(hotel_html, unsafe_allow_html=True)
+                    if node_name == "flight_agent":
+                        text = state_update.get("flight_results", "")
+                        collected["flight_results"] = text
 
-                        elif node_name == "weather_agent":
-                            text = state_update.get("weather_results", "")
-                            collected["weather_results"] = text
-                            weather_html = format_weather_results(text)
-                            st.markdown(weather_html, unsafe_allow_html=True)
+                    elif node_name == "hotel_agent":
+                        text = state_update.get("hotel_results", "")
+                        collected["hotel_results"] = text
 
-                        elif node_name == "itinerary_agent":
-                            text = state_update.get("itinerary", "")
-                            collected["itinerary"] = text
-                            itinerary_html = format_itinerary_results(text)
-                            st.markdown(itinerary_html, unsafe_allow_html=True)
+                    elif node_name == "weather_agent":
+                        text = state_update.get("weather_results", "")
+                        collected["weather_results"] = text
 
-                        elif node_name == "final_agent":
-                            msgs = state_update.get("messages", [])
-                            text = msgs[-1].content if msgs else ""
-                            collected["final_response"] = text
-                            final_html = format_final_response(text)
-                            st.markdown(final_html, unsafe_allow_html=True)
+                    elif node_name == "itinerary_agent":
+                        text = state_update.get("itinerary", "")
+                        collected["itinerary"] = text
 
-                        collected["llm_calls"] = state_update.get("llm_calls", collected["llm_calls"])
+                    elif node_name == "final_agent":
+                        msgs = state_update.get("messages", [])
+                        text = msgs[-1].content if msgs else ""
+                        collected["final_response"] = text
+
+                    collected["llm_calls"] = state_update.get("llm_calls", collected["llm_calls"])
 
         # Metrics
         st.markdown(f"""
@@ -968,6 +960,8 @@ if generate:
                         unsafe_allow_html=True)
             final_html = format_final_response(collected['final_response'])
             st.markdown(final_html, unsafe_allow_html=True)
+        else:
+            st.info("The final travel plan is still being prepared. Please try again if it does not appear.")
 
         # Save
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
